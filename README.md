@@ -1,31 +1,35 @@
 # Python Authentication Log Analyzer
 
-A lightweight Python tool for defensive security analysis that processes authentication logs, identifies repeated failed login attempts, and generates CSV reports of potentially suspicious activity.
+A lightweight Python tool for defensive cybersecurity analysis. It processes authentication logs, identifies repeated failed login attempts, and exports potentially suspicious activity to CSV reports.
 
 ## Overview
 
-Authentication logs are useful for identifying unusual login activity. This project analyzes authentication events to help detect repeated failed login attempts within a defined time window.
+Authentication logs can help identify unusual login activity, including repeated authentication failures that may indicate a brute-force attempt.
 
-The tool is designed as an educational cybersecurity project using sample log data. It demonstrates log processing, basic threat detection, data validation, automated testing, and report generation in Python.
+This project analyzes authentication events within a configurable time window. It demonstrates practical Python skills in data processing, input validation, basic security monitoring, automated testing, and report generation.
+
+The project uses fictional authentication data and is intended for educational and defensive security purposes.
 
 ## Features
 
-- **Log parsing:** Reads authentication events from CSV files.
-- **Data validation:** Checks required columns, timestamps, and supported event types.
-- **Failed login analysis:** Counts failed authentication attempts by IP address and username.
-- **Suspicious activity detection:** Flags IP addresses associated with at least 3 failed attempts within a 5-minute window.
-- **CSV report generation:** Exports detected alerts into a structured report.
-- **Automated testing:** Includes unit tests for detection logic, successful logins, time windows, and CSV exports.
+- **CSV Log Parsing:** Reads authentication events from CSV files.
+- **Input Validation:** Checks required columns, timestamp formats, usernames, IP addresses, and supported event types.
+- **Failed Login Statistics:** Counts failed attempts by IP address and username.
+- **Time-Based Detection:** Identifies repeated failed login attempts from the same IP address within a configurable time window.
+- **Configurable Detection Rules:** Allows the failure threshold and time window to be customized when calling the analysis function.
+- **CSV Report Generation:** Exports detected alerts to a structured CSV report.
+- **Automated Unit Tests:** Tests detection behavior, configurable thresholds, input parameters, successful logins, and CSV exports.
 
 ## Technologies
 
 - Python 3
-- CSV file processing
-- `datetime` for timestamp handling
-- `unittest` for automated testing
+- CSV processing
+- `datetime` and `timedelta`
+- `collections.Counter` and `collections.defaultdict`
+- `unittest`
 - Git and GitHub
 
-The project uses Python's standard library and does not require additional Python packages.
+The project uses Python's standard library and does not require third-party packages.
 
 ## Project Structure
 
@@ -39,18 +43,20 @@ python-auth-log-analyzer/
 └── README.md
 ```
 
-- `log_analyzer.py`: Main application and detection logic.
-- `sample_logs.csv`: Sample authentication events.
-- `test_log_analyzer.py`: Automated unit tests.
-- `alerts_report.csv`: Generated report containing detected alerts.
-- `.gitignore`: Excludes temporary and unnecessary files from Git.
+| File | Description |
+|---|---|
+| `log_analyzer.py` | Main application, log validation, detection logic, and report generation |
+| `sample_logs.csv` | Fictional authentication events used for analysis |
+| `test_log_analyzer.py` | Automated unit tests |
+| `alerts_report.csv` | Generated report containing detected alerts |
+| `.gitignore` | Excludes Python cache files and other unnecessary files from Git |
 
-The report is generated when the application runs; it does not need to be maintained manually.
+The report is generated when the application runs.
 
 ## Requirements
 
 - Python 3.10 or newer recommended.
-- Git is optional if you download the project as a ZIP archive.
+- Git is optional if you download the repository as a ZIP archive.
 
 ## Installation
 
@@ -66,11 +72,13 @@ Navigate to the project directory:
 cd python-auth-log-analyzer
 ```
 
-Check your Python installation:
+Check your Python version:
 
 ```bash
 python --version
 ```
+
+No additional package installation is required.
 
 ## Usage
 
@@ -80,9 +88,9 @@ Run the analyzer:
 python log_analyzer.py
 ```
 
-The program processes the sample logs, displays failed login statistics, identifies suspicious activity, and generates `alerts_report.csv`.
+By default, the application reads `sample_logs.csv`, analyzes failed authentication attempts, displays statistics, and generates `alerts_report.csv`.
 
-### Example output
+### Example Output
 
 ```text
 === Authentication Log Analysis ===
@@ -94,8 +102,7 @@ Failed attempts by user:
 - amine: 4
 
 Suspicious activity (3+ failures within 5 minutes):
-[ALERT] IP 192.0.2.10: 3 failures between
-2026-10-01 09:01:00 and 2026-10-01 09:03:00
+[ALERT] IP 192.0.2.10: 3 failures between 2026-10-01 09:01:00 and 2026-10-01 09:03:00
 
 [OK] Report saved to: alerts_report.csv
 ```
@@ -104,58 +111,79 @@ The example uses fictional authentication events and documentation-only IP addre
 
 ## Running the Tests
 
-Run the automated test suite:
+Run the test suite:
 
 ```bash
 python -m unittest -v
 ```
 
-The current test suite covers:
+The current test suite contains **10 unit tests** covering:
 
-- Counting failed authentication attempts.
-- Detecting repeated failures within five minutes.
+- Counting failed authentication attempts by IP address and username.
+- Detecting repeated failures within the configured time window.
+- Detecting separate suspicious periods.
 - Avoiding alerts when attempts are too far apart.
-- Ignoring successful logins during failed-attempt analysis.
+- Ignoring successful logins in failed-attempt statistics.
+- Supporting a custom failure threshold.
+- Rejecting an invalid threshold.
+- Rejecting a negative time window.
 - Exporting alerts to CSV.
 - Generating CSV headers when no alerts are detected.
 
+The tests use Python's built-in `unittest` framework.
+
 ## Detection Logic
 
-The analyzer uses a configurable threshold and time window:
+The analyzer groups failed authentication events by IP address and examines their timestamps using a sliding time window.
 
-| Parameter | Value |
+Default configuration:
+
+| Parameter | Default |
 |---|---|
-| Failed attempts threshold | 3 |
+| Failed-attempt threshold | 3 |
 | Time window | 5 minutes |
 | Input format | CSV |
 | Output format | CSV |
 
-An alert is generated when the configured threshold is reached by failed attempts associated with the same IP address within the specified time window.
+The analysis function also accepts custom parameters:
 
-These alerts indicate potentially suspicious activity, not proof of an attack.
+```python
+failed_by_ip, failed_by_user, alerts = analyze_logs(
+    logs,
+    threshold=2,
+    time_window_minutes=5,
+)
+```
+
+This example lowers the detection threshold to two failed attempts within five minutes.
+
+The current implementation suppresses repeated alerts for a recent period according to its configured time window. Its behavior should be validated against the intended detection policy, particularly for overlapping or continuous sequences of failed attempts.
+
+An alert indicates potentially suspicious activity, not proof of a successful attack.
 
 ## Limitations and Future Improvements
 
-This project is a learning tool and is not intended to replace a production Security Information and Event Management (SIEM) system.
+This project is an educational prototype, not a replacement for an enterprise Security Information and Event Management (SIEM) platform.
 
-Possible improvements include:
+Potential future improvements include:
 
-- Configurable detection thresholds.
-- More detailed detection rules and alert severity levels.
-- Detection of unusual activity across multiple accounts.
-- Improved error handling and logging.
-- Support for additional log formats.
-- Interactive dashboards and graphical statistics.
-- Integration with a database for storing historical events.
+- More precise handling of overlapping detection windows.
+- Configurable rules through command-line arguments or a configuration file.
+- Alert severity levels and richer alert details.
+- Detection of suspicious activity targeting multiple accounts.
+- Additional log formats and more robust validation.
+- Improved logging and error reporting.
+- A dashboard with graphical statistics.
+- Database integration for historical analysis.
 
 ## Security and Data Privacy
 
-The included dataset contains fictional authentication events. Use authorized logs and respect applicable privacy and data protection requirements when analyzing real authentication data.
+The included dataset uses fictional authentication events. When analyzing real logs, use only data you are authorized to access and follow applicable privacy and data protection requirements.
 
 ## Author
 
-Developed as a personal project to practice Python programming, defensive cybersecurity, authentication log analysis, and automated testing.
+Developed as a personal project to practice Python programming, defensive cybersecurity, authentication log analysis, data validation, and automated testing.
 
 ## License
 
-This project is intended for educational purposes. A formal open-source license can be added if the project is distributed for reuse.
+No open-source license has been specified yet. Add a license file if you decide to distribute the project for reuse.
