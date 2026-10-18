@@ -140,5 +140,28 @@ class TestLogAnalyzer(unittest.TestCase):
         with self.assertRaises(ValueError):
             analyze_logs([], time_window_minutes=-1)
 
+    def test_detects_two_separate_suspicious_periods(self):
+        logs = [
+            self.make_log(0),
+            self.make_log(1),
+            self.make_log(2),
+            self.make_log(20),
+            self.make_log(21),
+            self.make_log(22),
+        ]
+
+        _, _, alerts = analyze_logs(logs)
+
+        self.assertEqual(len(alerts), 2)
+        self.assertEqual(alerts[0]["attempts"], 3)
+        self.assertEqual(alerts[1]["attempts"], 3)
+        self.assertEqual(
+            alerts[0]["start"],
+            datetime(2026, 10, 1, 9, 0),
+        )
+        self.assertEqual(
+            alerts[1]["start"],
+            datetime(2026, 10, 1, 9, 20),
+        )
 if __name__ == "__main__":
     unittest.main()

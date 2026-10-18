@@ -68,13 +68,12 @@ def load_logs(filename):
         return logs
 
 
-
 def analyze_logs(
     logs,
     threshold=THRESHOLD,
     time_window_minutes=TIME_WINDOW_MINUTES,
 ):
-    """Count failed attempts and detect repeated failures over time."""
+    """Count failed attempts and detect suspicious activity."""
     if threshold < 1:
         raise ValueError("threshold must be at least 1")
 
@@ -103,6 +102,7 @@ def analyze_logs(
     for ip, timestamps in failures_by_ip.items():
         timestamps.sort()
         left = 0
+        last_alert_end = None
 
         for right in range(len(timestamps)):
             while timestamps[right] - timestamps[left] > window:
@@ -111,13 +111,21 @@ def analyze_logs(
             attempts = right - left + 1
 
             if attempts >= threshold:
-                suspicious_ips.append({
-                    "ip_address": ip,
-                    "attempts": attempts,
-                    "start": timestamps[left],
-                    "end": timestamps[right],
-                })
-                break
+                current_time = timestamps[right]
+
+                # Avoid duplicate alerts for the same recent activity.
+                if (
+                    last_alert_end is None
+                    or current_time - last_alert_end > window
+                ):
+                    suspicious_ips.append({
+                        "ip_address": ip,
+                        "attempts": attempts,
+                        "start": timestamps[left],
+                        "end": current_time,
+                    })
+
+                    last_alert_end = current_time
 
     return failed_by_ip, failed_by_user, suspicious_ips
 
@@ -146,7 +154,14 @@ def export_alerts_csv(alerts, filename=REPORT_FILE):
             })
 
 
-def display_alerts(failed_by_ip, failed_by_user, suspicious_ips):
+def display_alerts(
+    failed_by_ip,
+    failed_by_user,
+    suspicious_ips,
+    threshold=THRESHOLD,
+    time_window_minutes=TIME_WINDOW_MINUTES,
+):
+    """Display authentication analysis results."""
     print("=== Authentication Log Analysis ===")
 
     print("\nFailed attempts by IP:")
@@ -165,8 +180,8 @@ def display_alerts(failed_by_ip, failed_by_user, suspicious_ips):
 
     print(
         f"\nSuspicious activity "
-        f"({THRESHOLD}+ failures within "
-        f"{TIME_WINDOW_MINUTES} minutes):"
+        f"({threshold}+ failures within "
+        f"{time_window_minutes} minutes):"
     )
 
     if suspicious_ips:
@@ -183,15 +198,23 @@ def display_alerts(failed_by_ip, failed_by_user, suspicious_ips):
 def main():
     try:
         logs = load_logs(LOG_FILE)
-        failed_by_ip, failed_by_user, suspicious_ips = analyze_logs(logs)
+
+        failed_by_ip, failed_by_user, suspicious_ips = analyze_logs(
+            logs,
+            threshold=THRESHOLD,
+            time_window_minutes=TIME_WINDOW_MINUTES,
+        )
 
         display_alerts(
             failed_by_ip,
             failed_by_user,
             suspicious_ips,
+            threshold=THRESHOLD,
+            time_window_minutes=TIME_WINDOW_MINUTES,
         )
 
         export_alerts_csv(suspicious_ips)
+
         print(f"\n[OK] Report saved to: {REPORT_FILE}")
 
     except (OSError, ValueError) as error:
