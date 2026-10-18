@@ -117,6 +117,28 @@ class TestLogAnalyzer(unittest.TestCase):
         )
         self.assertEqual(rows, [])
 
+    def test_detects_failures_with_custom_threshold(self):
+        logs = [
+            self.make_log(0),
+            self.make_log(1),
+        ]
+
+        _, _, alerts = analyze_logs(
+            logs,
+            threshold=2,
+            time_window_minutes=5,
+        )
+
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0]["attempts"], 2)
+
+    def test_rejects_zero_threshold(self):
+        with self.assertRaises(ValueError):
+            analyze_logs([], threshold=0)
+
+    def test_rejects_negative_time_window(self):
+        with self.assertRaises(ValueError):
+            analyze_logs([], time_window_minutes=-1)
 
 if __name__ == "__main__":
     unittest.main()

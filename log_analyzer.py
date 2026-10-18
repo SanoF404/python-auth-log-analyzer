@@ -68,8 +68,19 @@ def load_logs(filename):
         return logs
 
 
-def analyze_logs(logs):
+
+def analyze_logs(
+    logs,
+    threshold=THRESHOLD,
+    time_window_minutes=TIME_WINDOW_MINUTES,
+):
     """Count failed attempts and detect repeated failures over time."""
+    if threshold < 1:
+        raise ValueError("threshold must be at least 1")
+
+    if time_window_minutes < 0:
+        raise ValueError("time_window_minutes cannot be negative")
+
     failed_by_ip = Counter()
     failed_by_user = Counter()
     failures_by_ip = defaultdict(list)
@@ -87,7 +98,7 @@ def analyze_logs(logs):
         failures_by_ip[ip].append(timestamp)
 
     suspicious_ips = []
-    window = timedelta(minutes=TIME_WINDOW_MINUTES)
+    window = timedelta(minutes=time_window_minutes)
 
     for ip, timestamps in failures_by_ip.items():
         timestamps.sort()
@@ -99,7 +110,7 @@ def analyze_logs(logs):
 
             attempts = right - left + 1
 
-            if attempts >= THRESHOLD:
+            if attempts >= threshold:
                 suspicious_ips.append({
                     "ip_address": ip,
                     "attempts": attempts,
